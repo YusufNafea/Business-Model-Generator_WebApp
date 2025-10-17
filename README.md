@@ -13,3 +13,5 @@
 
 (Purpose)
 - Designed for entrepreneurs, students, and professionals to quickly turn business ideas into structured, presentable Business Model Canvases — saving hours of manual   analysis and formatting.
+
+<img width="1536" height="1024" alt="image" src="https://github.com/user-attachments/assets/22423d70-95b6-4452-9c61-2d4df62fdde3" />
