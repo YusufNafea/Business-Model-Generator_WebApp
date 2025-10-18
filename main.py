@@ -1,3 +1,5 @@
+# ----------------------------------------------------Imports--------------------------------------------------------------
+
 import os
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -14,17 +16,15 @@ import json
 import io
 from pydantic import BaseModel
 
-# Load environment variables
+# Load environment variables (Contains the openAI API Key).
 load_dotenv()
 OPENAI_KEY = os.getenv("OPENAI_API_KEY")
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-3.5-turbo")
 
-if not OPENAI_KEY:
-    raise RuntimeError("OPENAI_API_KEY not set in .env file")
-
+#Initialize the FastAPI backend.
 app = FastAPI()
 
-# Middleware for CORS
+# Middleware for CORS (Used to enable the frontend origin side to connect the backend side)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -33,9 +33,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# --- Serve the React build ---
+# ---------------------------------------------------- Serve the React build -----------------------------------------------------
+
+# Static folder in the forntend side is the folder to be traced by the backend as it contains the JS and CSS files.
 app.mount("/static", StaticFiles(directory="build/static"), name="static")
 
+
+# When a user visits any route not matching an API endpoints, it returns the React index.html file (Single Page Application routing).
 @app.get("/{full_path:path}")
 async def serve_react_app(full_path: str):
     file_path = os.path.join("build", full_path)
@@ -44,7 +48,9 @@ async def serve_react_app(full_path: str):
     return FileResponse(os.path.join("build", "index.html"))
 
 
-# --- AI ROUTE: Generate BMC ---
+# --------------------------------------------------- AI ROUTE: Generate BMC ----------------------------------------------------
+
+#Takes a text file, sends it to OpenAI, gets back a Business Model Canvas, cleans it up, and returns the result
 @app.post("/api/generate_bmc")
 async def generate_bmc(file: UploadFile = File(...)):
     try:
@@ -54,7 +60,7 @@ async def generate_bmc(file: UploadFile = File(...)):
         # Read file content
         content = (await file.read()).decode("utf-8")
 
-        # Prepare AI prompt
+        # The AI prompt
         prompt = PromptTemplate(
             input_variables=["project_description"],
             template=(
@@ -67,6 +73,7 @@ async def generate_bmc(file: UploadFile = File(...)):
             )
         )
 
+        # Temperature is for the response's creativity, 0 for deterministic and 1 for the random.
         llm = ChatOpenAI(temperature=0.3, api_key=OPENAI_KEY, model=OPENAI_MODEL)
         chain = prompt | llm
         
@@ -171,12 +178,12 @@ async def generate_bmc(file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# --- PowerPoint Export Model ---
+# -------------------------------------------------------PowerPoint Export Model-------------------------------------------------
 class BMCExportRequest(BaseModel):
     bmc: dict
 
 
-# --- PowerPoint Export Route ---
+# ------------------------------------------------------PowerPoint Export Route---------------------------------------------
 @app.post("/api/export_ppt")
 async def export_ppt(request: BMCExportRequest):
     try:
@@ -315,7 +322,7 @@ async def export_ppt(request: BMCExportRequest):
         return StreamingResponse(
             ppt_stream,
             media_type="application/vnd.openxmlformats-officedocument.presentationml.presentation",
-            headers={"Content-Disposition": "attachment; filename=business_model_canvas.pptx"}
+            headers={"Content-Disposition": "attachment; filename=BMC.pptx"}
         )
         
     except Exception as e:
